@@ -62,7 +62,7 @@ def generate_dataset(
     )
 
     for chunk in chunks:
-        df = pd.concat([df, chunk])
+        df = pd.concat([df, chunk.dropna().drop_duplicates("src_text").drop_duplicates("tgt_text")])
         print("#", end="", flush=True)
 
     print()
@@ -74,8 +74,14 @@ def generate_dataset(
     print(f"loading tokenizer for {model_name}")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     df[["doc_id", "text_num"]] = df.id.str.extract(r"^(.*)-s(\d+)$")
+    print("tokenizer loaded")
 
+    print("starting to process dataset")
     prepared = process_dataset(df, tokenizer, min_sample_len, min_adq_score, min_lang_score)
+    print("", flush=True)
+    print("processing done")
+
+    print("starting writing processed data")
     with open(output_src, "a") as file_src, open(output_tgt, "a") as file_tgt:
         for src_text, tgt_text in prepared.itertuples(index=False):
             file_src.write(src_text + "\n")

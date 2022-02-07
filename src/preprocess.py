@@ -1,11 +1,13 @@
 from dataclasses import dataclass
 from typing import Generator, Iterable, List, Optional, Tuple
 
+
 import pandas as pd
-from tqdm import tqdm
+from pandarallel import pandarallel
 from transformers import PreTrainedTokenizerBase
 
-tqdm.pandas()
+
+pandarallel.initialize(progress_bar=True)
 
 
 @dataclass
@@ -99,7 +101,7 @@ def process_dataset(
             and group.tgt_lang_score.mean() > min_lang_score
         )
         .groupby("doc_id")
-        .progress_apply(lambda group: list(group_to_fit(group.src_text, group.tgt_text, tokenizer)))
+        .parallel_apply(lambda group: list(group_to_fit(group.src_text, group.tgt_text, tokenizer)))
         .explode()
         .apply(pd.Series)
         .rename(columns={0: "src_text", 1: "tgt_text"})
