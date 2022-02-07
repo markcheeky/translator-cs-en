@@ -10,4 +10,5 @@ black
 mypy
 isort
 pytest
+pandarallel
 adaptor[generative,examples]

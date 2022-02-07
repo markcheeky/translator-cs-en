@@ -20,6 +20,7 @@ dataclasses==0.6
 debugpy==1.5.1
 decorator==5.1.1
 defusedxml==0.7.1
+dill==0.3.4
 entrypoints==0.4
 executing==0.8.2
 fairseq==0.10.2
@@ -64,6 +65,7 @@ notebook==6.4.8
 numpy==1.22.2
 omegaconf==2.1.1
 packaging==21.3
+pandarallel==1.5.5
 pandas==1.4.0
 pandocfilters==1.5.0
 parso==0.8.3
