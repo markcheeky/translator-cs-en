@@ -46,9 +46,16 @@ def generate_dataset(
         print("output file(s) already exists. aborting")
         return
 
+    print("starting to read the data")
+
+    if file.suffix == "gz":
+        compression = "gzip"
+    else:
+        compression = None
+
     df = pd.read_csv(
         file,
-        compression="gzip",
+        compression=compression,
         sep="\t",
         names=list(columns.keys()),
         nrows=read_first_n,
