@@ -1,0 +1,13 @@
+numpy
+pandas
+transformers
+torch
+ipykernel
+jupyter
+jupytext
+typer
+black
+mypy
+isort
+pytest
+adaptor[generative,examples]
