@@ -3,3 +3,4 @@ models/
 .vscode/
 .history
 */.ipynb_checkpoints
+*/__pycache__
