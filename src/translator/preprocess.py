@@ -91,8 +91,6 @@ def process_dataset(
 
     return (
         df.dropna()
-        .drop_duplicates("src_text")
-        .drop_duplicates("tgt_text")
         .groupby("doc_id")
         .filter(
             lambda group: sum(map(len, group.src_text)) > min_sample_len
