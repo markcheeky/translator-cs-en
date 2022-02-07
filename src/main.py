@@ -63,7 +63,7 @@ def generate_dataset(
 
     for chunk in chunks:
         df = pd.concat([df, chunk])
-        print("#", end="")
+        print("#", end="", flush=True)
 
     print()
     print("input data was read.")
