@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pathlib import Path
 from typing import Optional
 from collections import OrderedDict
@@ -47,6 +49,7 @@ def generate_dataset(
         print("output file(s) already exists. aborting")
         return
 
+    print(f"start: {datetime.now()}")
     print("starting to read the data")
 
     df = pd.DataFrame()
@@ -88,6 +91,7 @@ def generate_dataset(
             file_tgt.write(tgt_text + "\n")
 
     print("all done.")
+    print(f"end: {datetime.now()}")
 
 
 if __name__ == "__main__":
