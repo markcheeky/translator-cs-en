@@ -26,6 +26,7 @@ def generate_dataset(
     min_sample_len: int = 150,
     min_adq_score: float = 0.2,
     min_lang_score: float = 0.8,
+    on_bad_lines: str = "warn",
 ) -> None:
     src_lang = "cs"
     target_lang = "en"
@@ -51,12 +52,16 @@ def generate_dataset(
         sep="\t",
         names=list(columns.keys()),
         nrows=read_first_n,
-        on_bad_lines="warn",
+        on_bad_lines=on_bad_lines,
         dtype=columns,
     )
+
+    print("input data was read.")
+
     df.src_text = df.src_text.str.replace("\n", " ").str.strip()
     df.tgt_text = df.tgt_text.str.replace("\n", " ").str.strip()
 
+    print(f"loading tokenizer for {model_name}")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     df[["doc_id", "text_num"]] = df.id.str.extract(r"^(.*)-s(\d+)$")
 
@@ -65,6 +70,8 @@ def generate_dataset(
         for src_text, tgt_text in prepared.itertuples(index=False):
             file_src.write(src_text + "\n")
             file_tgt.write(tgt_text + "\n")
+
+    print("all done.")
 
 
 if __name__ == "__main__":
