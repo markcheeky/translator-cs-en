@@ -2,6 +2,9 @@ data/
 models/
 .vscode/
 .history
-*/.ipynb_checkpoints
+*.ipynb_checkpoints/
 */__pycache__
 *.egg-info
+*.pyc
+.mypy_cache/
+.pytest_cache/
