@@ -27,6 +27,7 @@ def generate_dataset(
     min_adq_score: float = 0.2,
     min_lang_score: float = 0.8,
     on_bad_lines: str = "warn",
+    chunk_size: int = 1_000_000,
 ) -> None:
     src_lang = "cs"
     target_lang = "en"
@@ -48,21 +49,23 @@ def generate_dataset(
 
     print("starting to read the data")
 
-    if file.suffix == "gz":
-        compression = "gzip"
-    else:
-        compression = None
+    df = pd.DataFrame()
 
-    df = pd.read_csv(
+    chunks = pd.read_csv(
         file,
-        compression=compression,
         sep="\t",
         names=list(columns.keys()),
         nrows=read_first_n,
         on_bad_lines=on_bad_lines,
         dtype=columns,
+        chunksize=chunk_size,
     )
 
+    for chunk in chunks:
+        df = pd.concat([df, chunk])
+        print("#", end="")
+
+    print()
     print("input data was read.")
 
     df.src_text = df.src_text.str.replace("\n", " ").str.strip()
