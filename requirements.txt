@@ -10,5 +10,5 @@ black
 mypy
 isort
 pytest
-pandarallel
+joblib
 adaptor[generative,examples]
