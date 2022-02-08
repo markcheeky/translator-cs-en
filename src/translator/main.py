@@ -10,6 +10,10 @@ import typer
 app = typer.Typer()
 
 
+SRC_LANG = "cs"
+TGT_LANG = "en"
+
+
 @app.command()
 def generate_dataset(
     file: Path = typer.Argument(
@@ -31,12 +35,9 @@ def generate_dataset(
 
     from joblib import Parallel, delayed
     import pandas as pd
-    from transformers import AutoTokenizer
     from translator.preprocess import process_dataset
 
-    src_lang = "cs"
-    target_lang = "en"
-    model_name = f"Helsinki-NLP/opus-mt-{src_lang}-{target_lang}"
+    model_name = f"Helsinki-NLP/opus-mt-{SRC_LANG}-{TGT_LANG}"
     columns = OrderedDict(
         [
             ("id", str),
@@ -90,10 +91,7 @@ def translate(
 
     from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 
-    if gpu is None:
-        device = -1
-    else:
-        device = gpu
+    device = gpu if gpu is not None else -1
 
     print("loading model")
     model = AutoModelForSeq2SeqLM.from_pretrained(model_path)
@@ -107,5 +105,43 @@ def translate(
         print(translate(user_input)[0]["translation_text"])
 
 
-if __name__ == "__main__":
+@app.command()
+def train(
+    output_dir: Path,
+    train_src_path: Path,
+    train_tgt_path: Path,
+    valid_src_path: Path,
+    valid_tgt_path: Path,
+    steps: int = typer.Option(...),
+    batch_size: int = typer.Option(...),
+    grad_acc_steps: int = typer.Option(...),
+    save_steps: int = typer.Option(...),
+    starting_point: Optional[Path] = typer.Option(None),
+    lr: float = 0.000025,
+    gpu: Optional[int] = None,
+) -> None:
+
+    from translator.train import train_model
+
+    device = gpu if gpu is not None else "cpu"
+
+    train_model(
+        starting_point=starting_point,
+        output_dir=output_dir,
+        train_src_path=train_src_path,
+        train_tgt_path=train_tgt_path,
+        valid_src_path=valid_src_path,
+        valid_tgt_path=valid_tgt_path,
+        max_steps=steps,
+        lr=lr,
+        batch_size=batch_size,
+        grad_acc_steps=grad_acc_steps,
+        save_steps=save_steps,
+        src_lang=SRC_LANG,
+        tgt_lang=TGT_LANG,
+        device=device,
+    )
+
+
+def main():
     app()
