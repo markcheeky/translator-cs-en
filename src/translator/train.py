@@ -26,7 +26,7 @@ def train_model(
     batch_size: int,
     grad_acc_steps: int,
     save_steps: int,
-    max_steps: int,
+    epochs: int,
 ):
 
     if starting_point is None:
@@ -55,7 +55,7 @@ def train_model(
         stopping_strategy=StoppingStrategy.NUM_STEPS_TOTAL,
         do_train=True,
         do_eval=True,
-        max_steps=max_steps,
+        num_train_epochs=epochs,
         gradient_accumulation_steps=grad_acc_steps,
         save_steps=save_steps,
         evaluation_strategy="steps",
