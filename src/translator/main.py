@@ -4,11 +4,8 @@ from pathlib import Path
 from typing import Optional
 from collections import OrderedDict
 
-import pandas as pd
-from joblib import Parallel, delayed
 import typer
 
-from translator.preprocess import process_dataset
 
 app = typer.Typer()
 
@@ -31,6 +28,12 @@ def generate_dataset(
     on_bad_lines: str = "warn",
     chunk_size: int = 1_000_000,
 ) -> None:
+
+    from joblib import Parallel, delayed
+    import pandas as pd
+    from transformers import AutoTokenizer
+    from translator.preprocess import process_dataset
+
     src_lang = "cs"
     target_lang = "en"
     model_name = f"Helsinki-NLP/opus-mt-{src_lang}-{target_lang}"
@@ -77,6 +80,31 @@ def generate_dataset(
     print("processing done")
 
     print(f"end: {datetime.now()}")
+
+
+@app.command()
+def translate(
+    model_path: Path,
+    gpu: Optional[int] = None,
+) -> None:
+
+    from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
+
+    if gpu is None:
+        device = -1
+    else:
+        device = gpu
+
+    print("loading model")
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_path)
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    translate = pipeline("translation", model=model, tokenizer=tokenizer, device=device)
+
+    while True:
+        user_input = input("Type your czech sentence (leave empty to exit): ")
+        if user_input == "":
+            break
+        print(translate(user_input)[0]["translation_text"])
 
 
 if __name__ == "__main__":
