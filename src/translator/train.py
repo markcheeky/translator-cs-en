@@ -52,7 +52,7 @@ def train_model(
     training_args = AdaptationArguments(
         output_dir=output_dir,
         learning_rate=lr,
-        stopping_strategy=StoppingStrategy.NUM_STEPS_TOTAL,
+        stopping_strategy=StoppingStrategy.ALL_OBJECTIVES_NUM_EPOCHS,
         do_train=True,
         do_eval=True,
         num_train_epochs=epochs,
