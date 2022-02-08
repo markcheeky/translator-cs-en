@@ -114,12 +114,12 @@ def process_dataset(
         .rename(columns={0: "src_text", 1: "tgt_text"})
     )
 
-    output_src = f"{output_src}-{chunk_num:04}"
-    output_tgt = f"{output_tgt}-{chunk_num:04}"
+    output_src = f"{output_src}-{chunk_num:010}"
+    output_tgt = f"{output_tgt}-{chunk_num:010}"
 
-    with open(output_src, "w") as file_src, open(output_tgt, "w") as file_tgt:
+    with open(output_src, "a") as file_src, open(output_tgt, "a") as file_tgt:
         for src_text, tgt_text in prepared.itertuples(index=False):
             file_src.write(src_text + "\n")
             file_tgt.write(tgt_text + "\n")
 
-    print(f"chunk {chunk_num:04} done")
+    print(f"chunk {chunk_num:010} done")
