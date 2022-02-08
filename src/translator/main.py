@@ -5,10 +5,10 @@ from typing import Optional
 from collections import OrderedDict
 
 import pandas as pd
+from joblib import Parallel, delayed
 import typer
-from transformers import AutoTokenizer
 
-from preprocess import process_dataset
+from translator.preprocess import process_dataset
 
 app = typer.Typer()
 
@@ -22,8 +22,8 @@ def generate_dataset(
         readable=True,
         default=None,
     ),
-    output_src: Path = typer.Option(..., exists=False),
-    output_tgt: Path = typer.Option(..., exists=False),
+    output_src: str = typer.Option(...),
+    output_tgt: str = typer.Option(...),
     read_first_n: Optional[int] = None,
     min_sample_len: int = 150,
     min_adq_score: float = 0.2,
@@ -45,14 +45,8 @@ def generate_dataset(
         ]
     )
 
-    if output_src.exists() or output_tgt.exists():
-        print("output file(s) already exists. aborting")
-        return
-
     print(f"start: {datetime.now()}")
-    print("starting to read the data")
-
-    df = pd.DataFrame()
+    print("starting to read and process the data")
 
     chunks = pd.read_csv(
         file,
@@ -64,33 +58,24 @@ def generate_dataset(
         chunksize=chunk_size,
     )
 
-    for chunk in chunks:
-        df = pd.concat([df, chunk.dropna().drop_duplicates("src_text").drop_duplicates("tgt_text")])
-        print("#", end="", flush=True)
+    list(
+        Parallel(n_jobs=-1)(
+            delayed(process_dataset)(
+                df,
+                model_name,
+                min_sample_len,
+                min_adq_score,
+                min_lang_score,
+                output_src,
+                output_tgt,
+                i,
+            )
+            for i, df in enumerate(list(chunks))
+        )
+    )
 
-    print()
-    print("input data was read.")
-
-    df.src_text = df.src_text.str.replace("\n", " ").str.strip()
-    df.tgt_text = df.tgt_text.str.replace("\n", " ").str.strip()
-
-    print(f"loading tokenizer for {model_name}")
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    df[["doc_id", "text_num"]] = df.id.str.extract(r"^(.*)-s(\d+)$")
-    print("tokenizer loaded")
-
-    print("starting to process dataset")
-    prepared = process_dataset(df, tokenizer, min_sample_len, min_adq_score, min_lang_score)
-    print("", flush=True)
     print("processing done")
 
-    print("starting writing processed data")
-    with open(output_src, "a") as file_src, open(output_tgt, "a") as file_tgt:
-        for src_text, tgt_text in prepared.itertuples(index=False):
-            file_src.write(src_text + "\n")
-            file_tgt.write(tgt_text + "\n")
-
-    print("all done.")
     print(f"end: {datetime.now()}")
 
 

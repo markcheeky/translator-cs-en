@@ -1,13 +1,10 @@
 from dataclasses import dataclass
-from typing import Generator, Iterable, List, Optional, Tuple
+from typing import Generator, Iterable, Optional, Tuple
 
 
 import pandas as pd
-from pandarallel import pandarallel
-from transformers import PreTrainedTokenizerBase
 
-
-pandarallel.initialize(progress_bar=True)
+from transformers import PreTrainedTokenizerBase, AutoTokenizer
 
 
 @dataclass
@@ -72,11 +69,16 @@ def group_to_fit(
 
 def process_dataset(
     df: pd.DataFrame,
-    tokenizer: PreTrainedTokenizerBase,
+    model_name: str,
     min_sample_len: float,
     min_adq_score: float,
     min_lang_score: float,
+    output_src: str,
+    output_tgt: str,
+    chunk_num: int,
 ) -> pd.DataFrame:
+
+    df[["doc_id", "text_num"]] = df.id.str.extract(r"^(.*)-s(\d+)$")
 
     used_cols = {
         "doc_id",
@@ -89,8 +91,15 @@ def process_dataset(
     }
     assert set(df.columns).issuperset(used_cols)
 
-    return (
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    df.src_text = df.src_text.str.replace("\n", " ").str.strip()
+    df.tgt_text = df.tgt_text.str.replace("\n", " ").str.strip()
+
+    prepared = (
         df.dropna()
+        .drop_duplicates("src_text")
+        .drop_duplicates("tgt_text")
         .groupby("doc_id")
         .filter(
             lambda group: sum(map(len, group.src_text)) > min_sample_len
@@ -99,8 +108,18 @@ def process_dataset(
             and group.tgt_lang_score.mean() > min_lang_score
         )
         .groupby("doc_id")
-        .parallel_apply(lambda group: list(group_to_fit(group.src_text, group.tgt_text, tokenizer)))
+        .apply(lambda group: list(group_to_fit(group.src_text, group.tgt_text, tokenizer)))
         .explode()
         .apply(pd.Series)
         .rename(columns={0: "src_text", 1: "tgt_text"})
     )
+
+    output_src = f"{output_src}-{chunk_num:04}"
+    output_tgt = f"{output_tgt}-{chunk_num:04}"
+
+    with open(output_src, "w") as file_src, open(output_tgt, "w") as file_tgt:
+        for src_text, tgt_text in prepared.itertuples(index=False):
+            file_src.write(src_text + "\n")
+            file_tgt.write(tgt_text + "\n")
+
+    print(f"chunk {chunk_num:04} done")
