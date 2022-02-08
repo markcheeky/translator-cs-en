@@ -37,7 +37,7 @@ def group_to_fit(
     """
 
     if max_tokens is None:
-        max_tokens = tokenizer.model_max_length
+        max_tokens = int(tokenizer.model_max_length * 0.9)
 
     part = Chunk("", "", 0, 0)
     sep_space = Chunk(" ", " ", 1, 1)
@@ -47,6 +47,10 @@ def group_to_fit(
         src_curr_count = len(tokenizer.tokenize(src_text))
         with tokenizer.as_target_tokenizer():
             tgt_curr_count = len(tokenizer.tokenize(tgt_text))
+
+        if src_curr_count >= max_tokens or tgt_curr_count >= max_tokens:
+            # one sentence is too long on it's own.
+            continue
 
         curr = Chunk(src_text, tgt_text, src_curr_count, tgt_curr_count)
 
@@ -110,6 +114,7 @@ def process_dataset(
         .groupby("doc_id")
         .apply(lambda group: list(group_to_fit(group.src_text, group.tgt_text, tokenizer)))
         .explode()
+        .dropna()
         .apply(pd.Series)
         .rename(columns={0: "src_text", 1: "tgt_text"})
     )
