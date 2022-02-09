@@ -1,11 +1,14 @@
-from datetime import datetime
-
-from pathlib import Path
-from typing import Optional
+import math
 from collections import OrderedDict
+from datetime import datetime
+from itertools import islice
+from pathlib import Path
+from typing import List, Optional
 
 import typer
+from tqdm import tqdm
 
+from translator.utils import chunkify
 
 app = typer.Typer()
 
@@ -33,8 +36,9 @@ def generate_dataset(
     chunk_size: int = 1_000_000,
 ) -> None:
 
-    from joblib import Parallel, delayed
     import pandas as pd
+    from joblib import Parallel, delayed
+
     from translator.preprocess import process_dataset
 
     model_name = f"Helsinki-NLP/opus-mt-{SRC_LANG}-{TGT_LANG}"
@@ -87,9 +91,23 @@ def generate_dataset(
 def translate(
     model_path: Path,
     gpu: Optional[int] = None,
+    files: List[Path] = [],
+    batch_size: int = 1,
+    read_first_n: Optional[int] = None,
+    translated_filename_suffix: str = "-translated",
 ) -> None:
 
-    from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
+    from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
+
+    if len(files) == 0:
+        output_files = [Path(str(file) + translated_filename_suffix) for file in files]
+        for file, output_file in zip(files, output_files):
+            if not file.exists() or not file.is_file():
+                print(f"file '{file}' does not exist or is a directory. Aborting.")
+                return
+            if output_file.exists():
+                print(f"output file '{output_file}' already exists. Aborting.")
+                return
 
     device = gpu if gpu is not None else -1
 
@@ -98,11 +116,33 @@ def translate(
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     translate = pipeline("translation", model=model, tokenizer=tokenizer, device=device)
 
-    while True:
-        user_input = input("Type your czech sentence (leave empty to exit): ")
-        if user_input == "":
-            break
-        print(translate(user_input)[0]["translation_text"])
+    if len(files) == 0:
+        # interactive mode
+        while True:
+            user_input = input("Type a czech sentence (leave empty to exit): ")
+            if user_input == "":
+                return
+            print(translate(user_input)[0]["translation_text"])
+    else:
+        # translating documents
+        for file, output_file in zip(files, output_files):
+            print()
+            print(f"translating '{file}' to '{output_file}'")
+
+            if read_first_n is not None:
+                line_count = read_first_n
+            else:
+                with open(file, "r") as f:
+                    line_count = sum(1 for line in f)
+
+            batch_count = math.ceil(line_count / batch_size)
+
+            with open(file, "r") as f, open(output_file, "a") as out:
+                batches = chunkify((line.rstrip() for line in islice(f, 0, line_count)), batch_size)
+                output_batches = map(translate, tqdm(batches, total=batch_count))
+                for output_batch in output_batches:
+                    for output in output_batch:
+                        out.write(output["translation_text"].replace("\n", "") + "\n")
 
 
 @app.command()
