@@ -183,5 +183,36 @@ def train(
     )
 
 
+@app.command()
+def eval(
+    actual: Path = typer.Option(...),
+    reference: Path = typer.Option(...),
+    read_first_n: Optional[int] = None,
+) -> None:
+
+    from adaptor.evaluators.generative import BLEU, METEOR, ROUGE
+
+    with open(actual, "r") as file:
+        actual_strings = [line.rstrip() for line in islice(file, 0, read_first_n)]
+
+    with open(reference, "r") as file:
+        reference_strings = [line.rstrip() for line in islice(file, 0, read_first_n)]
+
+    if len(actual_strings) != len(reference_strings):
+        print("files have difference number of lines.")
+        print("Check if you put the right paths as arguments.")
+        max_lines = max(len(actual_strings), len(reference_strings))
+        actual_strings = actual_strings[:max_lines]
+        reference_strings = reference_strings[:max_lines]
+        print("files were truncated to the same line count")
+
+    bleu = BLEU(additional_sep_char="_").evaluate_str(reference_strings, actual_strings)
+    rouge_l = ROUGE(additional_sep_char="_").evaluate_str(reference_strings, actual_strings)
+    meteor = METEOR(additional_sep_char="_").evaluate_str(reference_strings, actual_strings)
+    print("Bleu:", bleu)
+    print("Rouge-L:", rouge_l)
+    print("Meteor:", meteor)
+
+
 def main():
     app()
