@@ -99,7 +99,7 @@ def translate(
 
     from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
 
-    if len(files) == 0:
+    if len(files) != 0:
         output_files = [Path(str(file) + translated_filename_suffix) for file in files]
         for file, output_file in zip(files, output_files):
             if not file.exists() or not file.is_file():
