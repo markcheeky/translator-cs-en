@@ -28,7 +28,7 @@ The repository contains one package called `translator` which provides a command
 
 All code is in `src/translator/`. It contains a `main.py` which provides cli interface for all functionality - preparation of dataset, training, interactive inference, translation of text files and evaluation.
 
-To set up the project, you will need Python 3.8, CUDA and install the requirements described in `requirements.txt`. Everything is set up on Apollo server at FI, for more details se the last section of this document.
+To set up the project, you will need Python 3.8, CUDA and install the requirements described in `requirements.txt` + run `pip install .` at the root of the repository. Everything is set up on Apollo server at FI, for more details see the last section of this document.
 
 
 ## Preparing dataset
