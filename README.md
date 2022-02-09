@@ -17,7 +17,7 @@ This document describes:
 The dataset used in the project is the **CZENG 2.0** released by Institute of Formal and Applied Linguistics (ÚFAL) at Charles University.
 Czeng contains roughly 700 million paralel sentences (and even more synthetically translated from monolingual intended for backtranslation training).
 
-The data in Czeng comes from various sources. One of them is a webscrape, which means that it contains some auto-translated sentences or even untranslated ones.
+The data in Czeng comes from various sources. One of them is a webscrape, which means that it contains some auto-translated sentences or even untranslated ones (sentence in both languages being exactly the same string).
 
 Fortunately, each paralel sentence in Czeng is scored by a neural translator from Charles university which aims to ranks the legitimity of the translation. Each sentence is also scored using a score computed from pseudo-probabilities from language models (one for source and one for target language). This can be used as a filter on the data.
 
@@ -26,9 +26,9 @@ Fortunately, each paralel sentence in Czeng is scored by a neural translator fro
 
 The repository contains one package called `translator` which provides a command line program which can be invoked using command `translator`.
 
-All code is in `src/translator/`. It contains a `main.py` which serves provides cli interface for all functionality - preparation of dataset, training, interactive inference, translation of text files and evaluation.
+All code is in `src/translator/`. It contains a `main.py` which provides cli interface for all functionality - preparation of dataset, training, interactive inference, translation of text files and evaluation.
 
-To set up the project, you will need Python 3.8, CUDA and instal the requirements described in `requirements.txt`. Everything is set up on Apollo server at FI, for more details se the last section of this document.
+To set up the project, you will need Python 3.8, CUDA and install the requirements described in `requirements.txt`. Everything is set up on Apollo server at FI, for more details se the last section of this document.
 
 
 ## Preparing dataset
@@ -63,7 +63,7 @@ In my case, even the small subset is large enough - it is 4.5 million documents.
 
 ## Training
 
-I finetuned a pretrained neural translator **Helsinki-NLP/opus-mt-cs-en** released by University of Helsinki in Huggingface transformers library. I used an open source library Adaptor, which is a lightweight wrapper around Huggingface transformes and provides a convenient way of loading the training data.
+I finetuned a pretrained neural translator **Helsinki-NLP/opus-mt-cs-en** released by University of Helsinki in Huggingface transformers library. I used an open source library [Adaptor](https://github.com/gaussalgo/adaptor), which is a lightweight wrapper around Huggingface transformes and provides a convenient way of loading the training data.
 
 The training can be run using `translator train` command. I trained on an Nvidia A100 gpu so my training parameters were:  
 ```
@@ -75,8 +75,8 @@ translator train path/for/saving/model_checkopints \
     --epochs=10
     --batch-size=32
     --grad-acc-steps=4
-    --save-steps=200
-    --eval-steps=10000
+    --save-steps=400
+    --eval-steps=50000
     --lr=0.00002
     --gpu=0
 ```
@@ -95,7 +95,7 @@ $$$ Type a czech sentence (leave empty to exit): Ahoj, co bude k obědu?
 >>> Hey, what's for lunch?
 ```
 
-The second mode is for translating text files. Keep in mind that is considers each line as a separate document and translates each line independently (and truncates it if it is too long.) Example:
+The second mode is for translating text files. Keep in mind that it considers each line as a separate document and translates each line independently (and truncates a line if it is too long.) Example:
 
 ```
 translator translate models/v1/Sequence2Sequence/
@@ -116,23 +116,24 @@ translator eval \
 ```
 which computes the evaluation metrics BLEU, ROGUE-L and Meteor. Again, one line counts as one document. This can be used to compare various checkpoints of the model.
 
-The filtered and processed test dataset contains around 30,000 documents. Translating this many documents would take about 5h on Nvidia A40. To make evaluation faster, I further reduced the test set to 6,000 documents by taking the prepared test dataset and sampling it with pandas `df.sample(6000, random_state=42)` and saving it to `czeng/`.
+The filtered and processed test dataset contains around 30,000 documents. Translating this many documents would take over 5h on a fast gpu. To make evaluation faster, I further reduced the test set to 6,000 documents by taking the prepared test dataset and sampling it with pandas `df.sample(6000, random_state=42)` and saving it to `czeng/prepared/prepared-train-mini-src.txt` and `czeng/prepared/prepared-train-mini-tgt.txt`.
 
 
 ## Results
 
-I compared multiple checkpoints on the same trained set. The checkpoint number indicates the number of gradient updates. In my setup, one epoch corresponds to approximately 35,000 gradient updates.
+I compared multiple checkpoints on the mini test set. The checkpoint number indicates the number of gradient updates. In my setup, one epoch corresponds to approximately 35,000 gradient updates.
 
-| checkpoint | BLEU | ROUGE-L | METEOR |
-|------------|------|---------|--------|
-| pretrained model  | TODO | TODO | TODO |
-| checkpoint 15600  | TODO | TODO | TODO |
-| checkpoint 30000  | TODO | TODO | TODO |
-| checkpoint 45600  | TODO | TODO | TODO |
-| checkpoint 60000  | TODO | TODO | TODO |
-| checkpoint 75600  | TODO | TODO | TODO |
-| checkpoint 81600  | TODO | TODO | TODO |
+| checkpoint        | BLEU    | ROUGE-L | METEOR |
+|-------------------|---------|---------|--------|
+| pretrained model  | 32.1923 | 0.5765  | 0.5801 |
+| checkpoint 15600  | 42.9991 | 0.6668  | 0.6638 |
+| checkpoint 30000  | 43.2755 | 0.6701  | 0.6660 |
+| checkpoint 45600  | 43.4970 | 0.6706  | 0.6644 |
+| checkpoint 60000  | 43.8216 | 0.6739  | 0.6665 |
+| checkpoint 75600  | 43.8190 | 0.6729  | 0.6661 |
+| checkpoint 81600  | 44.2114 | 0.6744  | 0.6690 |
 
+As we can see, most of the progress came from the first 15000 gradient updates (half of the first epoch). Additional training still increased the scores, but the improvements are negligible in comparison.
 
 
 ## Technical aspects on Apollo server
@@ -151,17 +152,19 @@ You can activate the environment by running
 ```
 conda activate /nlp/projekty/pv061_xkadlci2/py38
 ```
-(assuming you have miniconda installed.)
+assuming you have miniconda installed.
 
-The environment contains a CUDA compatible with the A100 gpu and all the neccessary python packages. It was created by ```conda create --prefix <path> python=3.8```. If you want to recreate this environment, you can jhust create a conda environment and `pip install` all python packages listed in requirements. However you might encounter problems with a pytorch+cuda installation so that it is compatible with apollo and A100 gpu. In that case, you should first install
+The environment contains a CUDA installation compatible with Apollo gpu's and all the neccessary python packages. It was created by ```conda create --prefix <path> python=3.8```. If you want to recreate this environment, you can just create a conda environment and `pip install` all python packages listed in requirements.
+
+However you might encounter problems with a pytorch+cuda installation so that it is compatible with Apollo and A100 gpu. In that case, you should first install
 ```
 pip install torch==1.9.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html
 ```
-and then the remaining requirements from requirements.txt.
+and then the remaining requirements from `requirements.txt`.
 
 Note that Apollo has 17 GPUs which is more than default installation of pytorch+cuda can handle. You should set
 ```
 export CUDA_VISIBLE_DEVICES=...
 ```
-so that you select the GPU you want to run training/inference on. On Apollo pytorch saw the A100 when I set CUDA_VISIBLE_DEVICES to 0.
+to select the GPU you want to use for training or inference. On Apollo, use `CUDA_VISIBLE_DEVICES=0` to select A100.
 
