@@ -2,14 +2,12 @@ from pathlib import Path
 from typing import Optional, Union
 
 import torch
-from adaptor.lang_module import LangModule
-
-from adaptor.adapter import Adapter, AdaptationArguments
+from adaptor.adapter import AdaptationArguments, Adapter
+from adaptor.evaluators.generative import BLEU, ROUGE
 from adaptor.lang_module import LangModule
 from adaptor.objectives.seq2seq import Sequence2Sequence
-from adaptor.utils import AdaptationArguments, StoppingStrategy
 from adaptor.schedules import SequentialSchedule
-from adaptor.evaluators.generative import BLEU, ROUGE
+from adaptor.utils import AdaptationArguments, StoppingStrategy
 
 
 def train_model(
@@ -26,6 +24,7 @@ def train_model(
     batch_size: int,
     grad_acc_steps: int,
     save_steps: int,
+    eval_steps: int,
     epochs: int,
 ):
 
@@ -58,6 +57,7 @@ def train_model(
         num_train_epochs=epochs,
         gradient_accumulation_steps=grad_acc_steps,
         save_steps=save_steps,
+        eval_steps=eval_steps,
         evaluation_strategy="steps",
     )
 
